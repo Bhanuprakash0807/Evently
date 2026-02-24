@@ -9,7 +9,11 @@ import User from './models/User.js';
 import { initIo } from './utils/socket.js';
 
 const PORT = Number(process.env.PORT) || 5002;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/event-platform';
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+  process.stderr.write('FATAL: MONGO_URI environment variable is not set\n');
+  process.exit(1);
+}
 
 const seedAdmin = async () => {
   const adminEmail = process.env.ADMIN_EMAIL;
