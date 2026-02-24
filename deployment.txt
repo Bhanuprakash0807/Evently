@@ -1,0 +1,2 @@
+Frontend URL: https://<your-project>.vercel.app
+Backend API URL: https://<your-service>.onrender.com

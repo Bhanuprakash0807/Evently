@@ -1,0 +1,18 @@
+export const INTEREST_OPTIONS = [
+  'AI/ML',
+  'Coding Competitions',
+  'Hackathons',
+  'Open Source',
+  'Web Development',
+  'Mobile Development',
+  'Cybersecurity',
+  'Robotics',
+  'Data Science',
+  'Design / UX',
+  'Product Management',
+  'Entrepreneurship',
+  'Workshops',
+  'Talks / Seminars',
+  'Sports / Fitness',
+  'Music / Cultural',
+];
