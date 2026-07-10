@@ -90,10 +90,11 @@ export const registerParticipant = async (req, res) => {
   });
 
   const token = signToken(user.id, user.role);
+  const isProduction = process.env.NODE_ENV === 'production';
   res.cookie('token', token, {
     httpOnly: true,
-    sameSite: 'lax',
-    secure: false,
+    sameSite: isProduction ? 'none' : 'lax',
+    secure: isProduction,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
   return res.status(201).json({ user: serializeUser(user), token });
@@ -123,18 +124,17 @@ export const login = async (req, res) => {
   }
 
   const token = signToken(user.id, user.role);
+  const isProduction = process.env.NODE_ENV === 'production';
   res.cookie('token', token, {
     httpOnly: true,
-    sameSite: 'lax',
-    secure: false,
+    sameSite: isProduction ? 'none' : 'lax',
+    secure: isProduction,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
   return res.json({ user: serializeUser(user), token });
 };
 
 export const changePassword = async (req, res) => {
-  console.log('Change password payload:', req.body);
-  console.log('User from token:', req.user?.id, req.user?.email, req.user?.role);
   const { oldPassword, newPassword } = req.body || {};
   if (!oldPassword || !newPassword) {
     return res.status(400).json({ message: 'Invalid password change request' });
@@ -155,10 +155,11 @@ export const changePassword = async (req, res) => {
   await user.save();
 
   const token = signToken(user.id, user.role);
+  const isProduction = process.env.NODE_ENV === 'production';
   res.cookie('token', token, {
     httpOnly: true,
-    sameSite: 'lax',
-    secure: false,
+    sameSite: isProduction ? 'none' : 'lax',
+    secure: isProduction,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
