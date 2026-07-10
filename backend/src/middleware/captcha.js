@@ -22,7 +22,6 @@ export const verifyCaptcha = async (req, res, next) => {
 
   try {
     const params = new URLSearchParams({ secret, response: token });
-    if (req.ip) params.set('remoteip', req.ip);
 
     const verifyRes = await fetch('https://api.hcaptcha.com/siteverify', {
       method: 'POST',
@@ -32,12 +31,14 @@ export const verifyCaptcha = async (req, res, next) => {
     const data = await verifyRes.json();
 
     if (!data.success) {
+      console.error('hCaptcha verification failed:', data['error-codes']);
       return res
         .status(400)
-        .json({ message: 'CAPTCHA verification failed. Please try again.' });
+        .json({ message: `CAPTCHA verification failed: ${data['error-codes']?.join(', ') || 'unknown error'}` });
     }
     return next();
-  } catch (_err) {
+  } catch (err) {
+    console.error('hCaptcha service error:', err);
     return res.status(500).json({ message: 'CAPTCHA service unavailable' });
   }
 };
