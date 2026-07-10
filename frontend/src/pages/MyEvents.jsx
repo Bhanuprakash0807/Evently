@@ -5,15 +5,15 @@ import Card from '../components/Card.jsx';
 import SectionHeader from '../components/SectionHeader.jsx';
 
 const tabs = [
-  { key: 'upcoming', label: 'Upcoming' },
+  { key: 'normal', label: 'Normal' },
+  { key: 'merchandise', label: 'Merchandise' },
   { key: 'completed', label: 'Completed' },
   { key: 'cancelled', label: 'Cancelled/Rejected' },
-  { key: 'merchandise', label: 'Merchandise' },
 ];
 
 const MyEvents = () => {
   const [registrations, setRegistrations] = useState([]);
-  const [tab, setTab] = useState('upcoming');
+  const [tab, setTab] = useState('normal');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 

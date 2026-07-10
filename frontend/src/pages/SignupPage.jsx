@@ -13,6 +13,8 @@ const SignupPage = () => {
     email: '',
     password: '',
     instituteName: '',
+    collegeOrgName: '',
+    contactNumber: '',
     isIIIT: false,
   });
   const [error, setError] = useState('');
@@ -33,7 +35,11 @@ const SignupPage = () => {
       return;
     }
     try {
-      await signup({ ...form, captchaToken });
+      await signup({
+        ...form,
+        participantType: form.isIIIT ? 'iiit' : 'non-iiit',
+        captchaToken,
+      });
       navigate('/onboarding');
     } catch (err) {
       setError(err.response?.data?.message || 'Signup failed');
@@ -64,6 +70,12 @@ const SignupPage = () => {
         <label>Institute / Club (optional)</label>
         <input name="instituteName" value={form.instituteName} onChange={onChange} />
 
+        <label>College / Organization (optional)</label>
+        <input name="collegeOrgName" value={form.collegeOrgName} onChange={onChange} />
+
+        <label>Contact Number (optional)</label>
+        <input name="contactNumber" value={form.contactNumber} onChange={onChange} placeholder="+91 XXXXXXXXXX" />
+
         <label className="checkbox">
           <input name="isIIIT" type="checkbox" checked={form.isIIIT} onChange={onChange} />
           I am an IIIT participant (use IIIT email)
@@ -83,3 +95,4 @@ const SignupPage = () => {
 };
 
 export default SignupPage;
+

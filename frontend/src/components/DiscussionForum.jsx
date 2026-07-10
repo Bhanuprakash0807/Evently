@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import api from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const BACKEND_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5002';
+const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5002/api').replace(/\/api\/?$/, '');
 
 const formatDate = (d) => new Date(d).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
