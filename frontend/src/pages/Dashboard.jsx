@@ -165,16 +165,79 @@ const Dashboard = () => {
       )}
 
       {user?.role === 'participant' && (
-        <Card>
-          <SectionHeader title="Participant Actions" subtitle="View your registrations and event updates" />
-          <p>
-            Visit Browse Events to register or purchase merchandise; see My Events for tickets and
-            history.
-          </p>
-        </Card>
+        <ParticipantDashboard />
       )}
     </PageContainer>
   );
 };
 
 export default Dashboard;
+
+function ParticipantDashboard() {
+  const [upcoming, setUpcoming] = useState([]);
+  const [loadingUpcoming, setLoadingUpcoming] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await api.get('/registrations/participant/events/upcoming');
+        setUpcoming(res.data.registrations || []);
+      } catch (_) {
+        // ignore
+      } finally {
+        setLoadingUpcoming(false);
+      }
+    };
+    load();
+  }, []);
+
+  return (
+    <>
+      <Card>
+        <SectionHeader title="Upcoming Events" subtitle="Your registered upcoming events" />
+        {loadingUpcoming && <p className="muted">Loading...</p>}
+        {!loadingUpcoming && upcoming.length === 0 && (
+          <p className="muted">No upcoming events. Browse events to register!</p>
+        )}
+        {!loadingUpcoming && upcoming.length > 0 && (
+          <div className="card-grid">
+            {upcoming.map((reg) => (
+              <Card key={reg._id}>
+                <SectionHeader
+                  title={reg.event?.name || 'Event'}
+                  subtitle={`Organizer: ${reg.event?.organizer?.name || '—'}`}
+                  actions={<span className="badge badge-blue">{reg.event?.type || reg.type}</span>}
+                />
+                {reg.event?.startDate && (
+                  <p className="muted" style={{ fontSize: '0.85rem' }}>
+                    📅 {new Date(reg.event.startDate).toLocaleString()}
+                    {reg.event?.endDate ? ` — ${new Date(reg.event.endDate).toLocaleString()}` : ''}
+                  </p>
+                )}
+                {reg.event?.saleStartDate && !reg.event?.startDate && (
+                  <p className="muted" style={{ fontSize: '0.85rem' }}>
+                    🛒 Sale: {new Date(reg.event.saleStartDate).toLocaleString()}
+                    {reg.event?.saleEndDate ? ` — ${new Date(reg.event.saleEndDate).toLocaleString()}` : ''}
+                  </p>
+                )}
+                {reg.ticketId && (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
+                    Ticket: <code>{reg.ticketId}</code>
+                  </p>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+      </Card>
+      <Card>
+        <SectionHeader title="Quick Actions" />
+        <div className="h-stack">
+          <a className="button" href="/browse">Browse Events</a>
+          <a className="button" href="/my-events">My Events</a>
+          <a className="button" href="/organizers">Clubs / Organizers</a>
+        </div>
+      </Card>
+    </>
+  );
+}

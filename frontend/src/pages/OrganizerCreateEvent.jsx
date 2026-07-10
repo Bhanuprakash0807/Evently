@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client.js';
 import PageContainer from '../components/PageContainer.jsx';
 import Card from '../components/Card.jsx';
@@ -7,7 +8,18 @@ import SectionHeader from '../components/SectionHeader.jsx';
 const emptyField = { label: '', type: 'text', required: false, options: '' };
 const emptyVariantGroup = { name: '', options: '' };
 
+const toLocalDatetime = (d) => {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt)) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+};
+
 const OrganizerCreateEvent = () => {
+  const { id: editId } = useParams();
+  const navigate = useNavigate();
+  const isEdit = Boolean(editId);
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -30,6 +42,59 @@ const OrganizerCreateEvent = () => {
   const [fields, setFields] = useState([emptyField]);
   const [variantGroups, setVariantGroups] = useState([emptyVariantGroup]);
   const [message, setMessage] = useState('');
+  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [formLocked, setFormLocked] = useState(false);
+
+  // Load existing event data in edit mode
+  useEffect(() => {
+    if (!editId) return;
+    const load = async () => {
+      setLoadingEdit(true);
+      try {
+        const res = await api.get(`/events/${editId}`);
+        const ev = res.data.event;
+        setForm({
+          name: ev.name || '',
+          description: ev.description || '',
+          type: ev.type || 'normal',
+          eligibility: ev.eligibility || 'both',
+          registrationDeadline: toLocalDatetime(ev.registrationDeadline),
+          startDate: toLocalDatetime(ev.startDate),
+          endDate: toLocalDatetime(ev.endDate),
+          registrationLimit: ev.registrationLimit || 0,
+          registrationFee: ev.registrationFee || 0,
+          saleStartDate: toLocalDatetime(ev.saleStartDate),
+          saleEndDate: toLocalDatetime(ev.saleEndDate),
+          tags: (ev.tags || []).join(', '),
+          stock: ev.stock || '',
+          purchaseLimit: ev.purchaseLimit || 1,
+          itemName: ev.merchandiseVariants?.[0]?.name || '',
+          teamRegistration: !!ev.teamRegistration,
+          maxTeamSize: ev.maxTeamSize || 2,
+        });
+        setFormLocked(!!ev.formLocked);
+        if (ev.customFormSchema?.length) {
+          setFields(ev.customFormSchema.map((f) => ({
+            label: f.label || '',
+            type: f.type || 'text',
+            required: !!f.required,
+            options: (f.options || []).join(', '),
+          })));
+        }
+        if (ev.variants?.length) {
+          setVariantGroups(ev.variants.map((v) => ({
+            name: v.name || '',
+            options: (v.options || []).join(', '),
+          })));
+        }
+      } catch (err) {
+        setMessage(err.response?.data?.message || 'Failed to load event for editing');
+      } finally {
+        setLoadingEdit(false);
+      }
+    };
+    load();
+  }, [editId]);
 
   const onChange = (e) => {
     const { name, value, type: inputType, checked } = e.target;
@@ -117,16 +182,23 @@ const OrganizerCreateEvent = () => {
         }
       }
 
-      const res = await api.post('/events', payload);
-      setMessage(`Created event ${res.data.event.name}`);
+      if (isEdit) {
+        const res = await api.patch(`/events/${editId}`, payload);
+        setMessage(`Updated event ${res.data.event.name}`);
+        setTimeout(() => navigate(`/organizer/events/${editId}`), 1000);
+      } else {
+        const res = await api.post('/events', payload);
+        setMessage(`Created event ${res.data.event.name}`);
+      }
     } catch (err) {
       const details = err.response?.data?.details;
-      setMessage(details?.length ? details.join(' | ') : err.response?.data?.message || 'Create failed');
+      setMessage(details?.length ? details.join(' | ') : err.response?.data?.message || (isEdit ? 'Update failed' : 'Create failed'));
     }
   };
 
   return (
-    <PageContainer title="Create Event">
+    <PageContainer title={isEdit ? 'Edit Event' : 'Create Event'}>
+      {loadingEdit && <p className="muted">Loading event data...</p>}
       <Card>
         <SectionHeader title="Basics" subtitle="Core details of your event" />
         <div className="stack">
@@ -277,7 +349,7 @@ const OrganizerCreateEvent = () => {
       )}
 
       <div className="form-actions">
-        <button onClick={submit}>Create (Draft)</button>
+        <button onClick={submit}>{isEdit ? 'Save Changes' : 'Create (Draft)'}</button>
       </div>
       {message && <p>{message}</p>}
     </PageContainer>

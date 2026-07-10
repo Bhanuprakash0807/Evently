@@ -104,6 +104,9 @@ const OrganizerEvents = () => {
               >
                 Mark Completed
               </button>
+              <a className="button ghost" href={`/organizer/events/${ev._id}/edit`} style={{ opacity: ev.status === 'draft' ? 1 : 0.5, pointerEvents: ev.status === 'draft' ? 'auto' : 'none' }}>
+                Edit
+              </a>
               <a className="button" href={`/organizer/events/${ev._id}`}>
                 View Detail
               </a>

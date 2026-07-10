@@ -118,6 +118,14 @@ const App = () => {
           }
         />
         <Route
+          path="/organizer/events/:id/edit"
+          element={
+            <ProtectedRoute roles={['organizer']}>
+              <OrganizerCreateEvent />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/organizer/events/:id"
           element={
             <ProtectedRoute roles={['organizer']}>
