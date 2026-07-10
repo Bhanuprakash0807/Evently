@@ -24,7 +24,7 @@
 - [Role System](#-role-system)
 - [Feature Breakdown](#-feature-breakdown)
 - [Tech Stack & Justifications](#-tech-stack--justifications)
-- [Advanced Features](#-advanced-features)
+- [Advanced Features (Part 2)](#-advanced-features-part-2)
 - [Data Models](#-data-models)
 - [Project Structure](#-project-structure)
 - [Local Setup](#-local-setup)
@@ -67,10 +67,10 @@ Each user account holds **exactly one role** — switching roles is prohibited b
 | **Organizer Provisioning** | No self-registration; Admin creates organizer accounts with auto-generated credentials |
 | **Admin Seeding** | Admin is the first user; provisioned entirely via backend environment variables — no UI registration |
 | **Password Hashing** | All passwords hashed with `bcrypt` — no plaintext storage at any layer |
-| **JWT + httpOnly Cookies** | Stateless auth with XSS-resistant httpOnly cookie transport |
+| **JWT + httpOnly Cookies** | Stateless auth with XSS-resistant httpOnly cookie transport, environment-aware cross-origin support |
 | **Role-Based Access Control** | Every frontend route and backend endpoint is protected by role middleware |
 | **Session Persistence** | Sessions survive browser restarts; logout explicitly clears all tokens |
-| **Bot Protection** | CAPTCHA verification on login and registration pages via Google reCAPTCHA / hCaptcha |
+| **Bot Protection** | CAPTCHA verification on login and registration pages via hCaptcha widget |
 
 ---
 
@@ -102,144 +102,88 @@ Each user account holds **exactly one role** — switching roles is prohibited b
 | **Event Analytics** | Per-event stats: registrations, sales, revenue, attendance rate |
 | **Participant Management** | Full registrant list with name, email, reg date, payment status, attendance; search/filter; export as CSV |
 | **Merchandise Payment Approval** | Separate tab showing uploaded payment proofs; approve/reject with status tracking; QR ticket generated only on approval |
-| **QR Scanner & Attendance** | Built-in camera scanner or file upload; marks attendance with timestamp; rejects duplicate scans; live dashboard; CSV export; manual override with audit log |
-| **Discord Webhook** | Auto-posts new event announcements to a configured Discord channel on publish |
+| **QR Scanner & Attendance** | Built-in camera scanner or file upload; marks attendance with timestamp; rejects duplicate scans; live dashboard; CSV export; manual override |
+| **Discord Webhook** | Auto-posts new event announcements to a configured Discord channel on publish and creation |
 | **Password Reset Workflow** | Request reset via Admin; Admin approves/rejects with comments; system auto-generates new password |
 | **Organizer Profile** | Editable name, category, description, contact; configure Discord webhook URL |
 
 ---
 
-### 🛡️ Admin Features
+## 🛠️ Tech Stack & Library Justifications
 
-| Feature | Details |
-|---|---|
-| **Organizer Management** | Create organizer accounts with auto-generated credentials; view all clubs; disable or permanently delete accounts |
-| **Password Reset Requests** | View all pending requests with club name, date, reason; approve or reject with comments; system notifies on approval |
-
----
-
-## 🛠️ Tech Stack & Justifications
-
-### Backend
-
-| Library / Tool | Purpose | Why This Choice |
+| Library | Purpose | Why Chosen |
 |---|---|---|
-| **Node.js 18+** | Runtime | Non-blocking I/O ideal for concurrent event registrations and real-time features |
-| **Express.js** | HTTP framework | Minimal surface area with clean middleware chaining; easy to layer auth, validation, and error handling |
-| **MongoDB + Mongoose** | Database & ODM | Flexible document schema accommodates dynamic custom forms and varied event types without rigid migrations |
-| **JWT** | Authentication tokens | Stateless tokens eliminate server-side session storage; scales well with a deployed SPA + API architecture |
-| **bcrypt** | Password hashing | Industry-standard adaptive hashing with configurable salt rounds; resistant to brute-force attacks |
-| **Nodemailer** | Email delivery | Flexible SMTP transport for sending QR ticket emails, password reset notifications, and confirmations |
-| **qrcode** | QR code generation | Generates QR images embedded directly in ticket emails; used by organizer scanner for entry validation |
-| **Socket.io** | Real-time communication | Powers the live discussion forum with instant message delivery, typing indicators, and online status |
-| **Joi** | Input validation | Declarative schema validation across all role flows — cleaner than manual checks and easier to maintain |
-| **json2csv** | CSV export | Fast, dependency-light conversion of participant arrays to downloadable CSV for organizer export |
-| **Multer** | File upload handling | Handles payment proof image uploads for merchandise approval workflow |
-| **Fuse.js** | Fuzzy search | Lightweight client-side fuzzy matching for browse page search without full-text index overhead |
-| **ics** | Calendar file generation | Generates standards-compliant `.ics` files for universal calendar import (Google, Outlook, Apple) |
-
-### Frontend
-
-| Library / Tool | Purpose | Why This Choice |
-|---|---|---|
-| **React + Vite** | UI framework + build tool | Fast HMR, lean build output, and component model fits complex role-based page trees |
-| **React Router v6** | Client-side routing | Declarative nested routes with loader/action pattern; easy role-based route guards |
-| **Tailwind CSS** | Utility-first styling | Rapid UI development without context-switching to CSS files; consistent design tokens |
-| **Axios** | HTTP client | Interceptor support for attaching JWT headers and handling 401 redirects globally |
-| **React Hook Form** | Form state management | Minimal re-renders for dynamic custom event registration forms; integrates with Joi validation |
-| **html5-qrcode** | QR scanner (camera) | Browser-native camera access for organizer attendance scanning without native app dependency |
-| **Socket.io-client** | Real-time client | Pairs with server Socket.io for the discussion forum and team chat |
-| **date-fns** | Date utilities | Lightweight, tree-shakeable date formatting and comparison for event deadlines and schedules |
-| **React Hot Toast** | Notifications | Non-intrusive toast notifications for registration confirmations, errors, and real-time forum alerts |
+| **Express** | HTTP framework | Minimal, well-documented, middleware-first architecture ideal for REST APIs |
+| **MongoDB + Mongoose** | Database + ODM | Flexible document model handles dynamic event schemas, custom forms, and nested merchandise variants without rigid migrations |
+| **JWT + httpOnly cookies** | Stateless authentication | SPA-compatible, XSS-resistant with cookie transport, works across cross-origin Vercel/Render deployment |
+| **bcrypt** | Password hashing | Industry-standard adaptive hashing with configurable salt rounds for password security |
+| **Nodemailer** | Email transport | SMTP-based ticket emails with embedded QR codes as CID attachments for reliable delivery |
+| **Fuse.js** | Fuzzy search | Lightweight client-side fuzzy search for event discovery without requiring a search engine like Elasticsearch |
+| **Joi** | Input validation | Declarative schema validation on all API endpoints — clean, composable, and readable |
+| **qrcode** | QR code generation | Generates data-URL QR images embedded directly in ticket emails for venue entry scanning |
+| **Socket.IO** | Real-time communication | WebSocket-based bidirectional channel for live discussion forum messages with automatic reconnection |
+| **nanoid + uuid** | ID generation | Generates unique ticket IDs and team invite codes with collision resistance |
+| **json2csv** | CSV export | Fast, streaming CSV generation for organizer participant lists |
 
 ---
 
-## 🚀 Advanced Features
+## 🚀 Advanced Features (Part 2)
 
-### Tier A — Core Advanced Features (16 marks)
+### Tier A (Choose 2)
 
-#### 1. Hackathon Team Registration
+#### A1 — Hackathon Team Registration
+Team-based registration for normal events. Participants create a team (with a name and size limit), share an auto-generated invite code with teammates, and the team leader finalizes registration once the team is full. All members receive individual ticket emails with QR codes.
 
-Team-based event registration with a complete invite and formation workflow:
+* **Implementation**: `Team` model tracks members, invite codes, and team status (`forming` → `complete` → `registered`). The `TeamSection` component on EventDetails handles the full flow. Backend enforces team size limits and prevents duplicate membership.
 
-- Team leader creates a team and sets the required size
-- Members are invited via a **unique shareable code or link**
-- Registration status is tracked per member: Pending / Accepted / Rejected
-- A team's registration is only **marked complete when all invited members accept**
-- **Team management dashboard** for the leader — view invite status, remove members, disband team
-- **Automatic ticket generation** for all members simultaneously on team completion, each with a unique QR code
-- Integrates with the participant dashboard — teams appear as a single record with team name and member list
+#### A2 — Merchandise Payment Approval Workflow
+Merchandise orders are created in a `pending` state — no QR ticket is issued. Participants upload payment proof (screenshot URL), and organizers review/approve/reject from a dedicated approvals dashboard. On approval, stock is decremented atomically, a QR ticket is generated, and a confirmation email is sent. Rejected orders include a reason and participants can re-upload proof.
 
-#### 2. Merchandise Payment Approval Workflow
-
-A manual payment verification loop between participant and organizer:
-
-- Participant selects item variant → places order → **uploads payment proof image**
-- Order enters **Pending Approval** state; no QR is generated at this stage
-- Organizer sees a dedicated **Payment Approvals tab** with order list, uploaded proof thumbnails, and current status
-- Organizer can **Approve** or **Reject** with optional comments
-- On approval: stock is decremented, order marked Successful, **QR ticket is generated**, confirmation email sent
-- On rejection: participant is notified via email with reason; can re-upload if allowed
-- Prevents stock overselling — stock only decrements on approval, not on order placement
+* **Implementation**: `Registration.paymentStatus` tracks the approval lifecycle (`pending` → `approved`/`rejected`). The `OrganizerMerchandiseApprovals` page provides filtering and bulk review. `organizerController.approveMerchandise` handles the atomic stock decrement + QR generation.
 
 ---
 
-### Tier B — Real-time & Communication Features (12 marks)
+### Tier B (Choose 2)
 
-#### 1. Real-Time Discussion Forum
+#### B1 — Real-Time Discussion Forum
+Live, threaded discussion forum per event powered by Socket.IO. Features include: message threading (reply to specific messages), emoji reactions (👍 🎉 ❤️ ❓), message pinning/unpinning by organizers, organizer-only announcements, and soft-delete. Only registered participants and organizers can post; all users can view. Pinned messages are displayed separately at the top.
 
-Per-event discussion space available to all registered participants:
+* **Implementation**: `ForumMessage` model with Socket.IO rooms per event (`forum:<eventId>`). The `DiscussionForum` component manages real-time message sync, scroll-aware unread indicators, and auto-scroll to latest. Backend `forumController` handles CRUD with role-based permissions for pin/delete.
 
-- Built with **Socket.io** for instant message delivery without polling
-- Participants can post messages, reply in **threads**, and react with emojis
-- Organizers can **pin announcements**, delete inappropriate messages, and respond to queries
-- **Notification badges** on the forum tab when new messages arrive while viewing other sections
-- Message history is persisted in MongoDB and loaded on page entry
+#### B2 — Organizer Password Reset Workflow
+Admin-mediated password reset for organizers. Organizers can request a reset from both the login page (when locked out) and their profile (when logged in). Requests include a reason and are queued for admin review. Admins approve (auto-generates new password, sent via email) or reject from a dedicated dashboard.
 
-#### 2. Organizer Password Reset Workflow
-
-A structured, admin-mediated reset process (organizers cannot self-reset):
-
-- Organizer submits a **password reset request** with reason from their profile
-- Admin sees all requests with club name, submission date, reason, and current status (Pending / Approved / Rejected)
-- Admin can **approve or reject** with optional comments
-- On approval: system **auto-generates a new secure password**, Admin receives it and shares it with the organizer
-- Full **request history** visible to both Admin and Organizer
-- Organizer is prompted to change the auto-generated password on next login
+* **Implementation**: `User.passwordResetRequests` array stores pending requests with status tracking. `OrganizerForgotPassword` page provides the public-facing request form. `AdminPasswordResets` page manages the queue. On approval, `adminController.handlePasswordReset` generates a secure password, hashes it, and sets `mustChangePassword: true` forcing a change on next login.
 
 ---
 
-### Tier C — Integration & Enhancement Features (2 marks)
+### Tier C (Choose 1)
 
-#### Bot Protection
+#### C3 — Bot Protection (hCaptcha)
+hCaptcha integration on login and signup forms to prevent automated account creation and credential stuffing. Uses the `@hcaptcha/react-hcaptcha` widget on the frontend with server-side token verification via the hCaptcha API. Configurable via environment variables (`HCAPTCHA_SECRET_KEY` backend, `VITE_HCAPTCHA_SITE_KEY` frontend). Falls back to test keys in development mode.
 
-CAPTCHA verification on all public-facing auth pages:
-
-- Integrated **hCaptcha** on login and registration forms
-- Server-side token verification before processing any auth request
-- Prevents automated account creation, credential stuffing, and bot registrations
+* **Implementation**: `captcha.js` middleware verifies tokens server-side before processing auth requests. `CaptchaWidget` component wraps the hCaptcha React widget with reset-on-error behavior.
 
 ---
 
-## 📦 Data Models
+## 🗄️ Data Models
 
-### Participant
+### User
 ```
-firstName, lastName, email (unique), passwordHash, participantType (IIIT | NonIIIT),
-college, contactNumber, interests[], followedOrganizers[], createdAt
-```
-
-### Organizer
-```
-name, category, description, contactEmail, loginEmail, passwordHash,
-discordWebhookUrl, isActive, createdAt
+name, email, passwordHash, role (admin | organizer | participant),
+participantType (iiit | non-iiit), isIIIT, instituteName, collegeOrgName, contactNumber,
+interests[], followedOrganizers[], passwordResetRequests[{reason, status, ...}]
 ```
 
 ### Event
 ```
-name, description, type (Normal | Merchandise), eligibility, registrationDeadline,
-startDate, endDate, registrationLimit, registrationFee, tags[], status,
-organizerId, customFormSchema[], createdAt
+name, description, type (normal | merchandise), eligibility (iiit | non-iiit | both),
+registrationDeadline, startDate, endDate, registrationLimit, registrationFee,
+teamRegistration, maxTeamSize, saleStartDate, saleEndDate, tags[], stock,
+purchaseLimit, merchandiseVariants[{name, price, stock, purchaseLimitPerUser}],
+variants[{name, options[]}], customFormSchema[{label, type, required, options[]}],
+status (draft | published | ongoing | sale-live | sale-ended | completed | closed),
+organizerId, createdAt
 ```
 
 ### Registration
@@ -254,23 +198,10 @@ eventId, leaderId, name, inviteCode, requiredSize, members[{participantId, statu
 isComplete, createdAt
 ```
 
-### MerchandiseOrder
-```
-eventId, participantId, variant{size, color}, paymentProofUrl,
-approvalStatus (Pending | Approved | Rejected), organizerComment,
-ticketId, qrCodeUrl, createdAt
-```
-
 ### ForumMessage
 ```
 eventId, authorId, authorRole, content, parentMessageId, isPinned,
 reactions[{emoji, count, userIds[]}], createdAt
-```
-
-### PasswordResetRequest
-```
-organizerId, reason, status (Pending | Approved | Rejected),
-adminComment, resolvedAt, createdAt
 ```
 
 ---
@@ -280,37 +211,36 @@ adminComment, resolvedAt, createdAt
 ```
 evently/
 ├── backend/
-│   ├── controllers/          # Route handler logic per domain
-│   │   ├── auth.controller.js
-│   │   ├── event.controller.js
-│   │   ├── team.controller.js
-│   │   ├── merchandise.controller.js
-│   │   ├── forum.controller.js
-│   │   └── admin.controller.js
-│   ├── middleware/
-│   │   ├── auth.middleware.js     # JWT verification
-│   │   └── role.middleware.js     # Role-based guards
-│   ├── models/               # Mongoose schemas
-│   ├── routes/               # Express routers
-│   ├── sockets/              # Socket.io event handlers
-│   ├── utils/
-│   │   ├── email.js          # Nodemailer templates
-│   │   ├── qr.js             # QR generation
-│   │   └── csv.js            # CSV export
-│   ├── .env.example
-│   └── server.js
-└── frontend/
-    ├── src/
-    │   ├── components/       # Shared UI components
-    │   ├── pages/
-    │   │   ├── participant/  # Dashboard, Browse, Profile, Forum
-    │   │   ├── organizer/    # Dashboard, Create Event, Scanner
-    │   │   └── admin/        # Manage Clubs, Password Requests
-    │   ├── hooks/            # Custom React hooks
-    │   ├── context/          # Auth context and socket provider
-    │   └── utils/            # Axios instance, helpers
-    ├── .env.example
-    └── index.html
+│   ├── src/
+│   │   ├── controllers/      # Business logic (auth, events, registration, teams, forum, admin, organizer)
+│   │   │   ├── adminController.js
+│   │   │   ├── authController.js
+│   │   │   ├── eventController.js
+│   │   │   ├── organizerController.js
+│   │   │   ├── profileController.js
+│   │   │   └── registrationController.js
+│   │   ├── middleware/       # Auth, RBAC, captcha, event edit permissions, validation
+│   │   │   ├── auth.js
+│   │   │   ├── captcha.js
+│   │   │   └── checkEventEditPermission.js
+│   │   ├── models/           # Mongoose schemas (User, Event, Registration, Team, ForumMessage)
+│   │   ├── routes/           # Express route definitions with Joi validation
+│   │   └── utils/            # Email service, QR generation, socket.io, event status computation
+│   │       ├── emailService.js
+│   │       ├── qr.js
+│   │       ├── socket.js
+│   │       └── updateEventStatus.js
+│   └── .env.example
+├── frontend/
+│   ├── src/
+│   │   ├── components/       # Reusable UI (Navbar, ProtectedRoute, DiscussionForum, TeamSection, etc.)
+│   │   ├── context/          # AuthContext for global auth state
+│   │   ├── pages/            # Route-level page components
+│   │   └── api/              # Axios client with JWT interceptor
+│   └── .env.example
+├── deployment.txt
+├── TESTING.md
+└── README.md
 ```
 
 ---
@@ -323,7 +253,7 @@ evently/
 - MongoDB URI (Atlas free tier or local instance)
 - SMTP credentials (Gmail app password works)
 - Discord webhook URL (optional — disables webhook feature if absent)
-- hCaptcha site/secret key pair
+- hCaptcha site/secret key pair (optional — defaults to test keys in dev)
 
 ### 1. Clone the repository
 
@@ -370,15 +300,17 @@ SMTP_HOST=                   # e.g. smtp.gmail.com
 SMTP_PORT=587
 SMTP_EMAIL=                  # Sender email address
 SMTP_PASSWORD=               # App password or SMTP password
+SMTP_DISABLE=false
 FRONTEND_URL=                # e.g. http://localhost:5173 or production URL
-RECAPTCHA_SECRET_KEY=        # Google reCAPTCHA server-side secret
+HCAPTCHA_SECRET_KEY=         # hCaptcha server-side secret key
+NODE_ENV=production
 ```
 
 ### `frontend/.env`
 
 ```env
 VITE_API_URL=                # Include /api suffix — e.g. http://localhost:5000/api
-VITE_RECAPTCHA_SITE_KEY=     # Google reCAPTCHA client-side site key
+VITE_HCAPTCHA_SITE_KEY=      # hCaptcha client-side site key
 ```
 
 ---
@@ -445,7 +377,6 @@ A full end-to-end test checklist covering all role flows is documented in [`TEST
 - Discussion forum → post message → organizer pins → participant replies
 - Password reset → organizer requests → admin approves → new credentials issued
 - CAPTCHA validation on login and signup pages
-
 
 <div align="center">
 
