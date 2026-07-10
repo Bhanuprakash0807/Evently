@@ -1,6 +1,7 @@
 import Event from '../models/Event.js';
 
-const allowedForPublished = ['description', 'registrationDeadline', 'registrationLimit'];
+const allowedForPublishedNormal = ['description', 'registrationDeadline', 'registrationLimit'];
+const allowedForPublishedMerch = ['description', 'saleEndDate', 'stock'];
 
 export const checkEventEditPermission = async (req, res, next) => {
   try {
@@ -21,9 +22,14 @@ export const checkEventEditPermission = async (req, res, next) => {
     }
 
     if (status === 'published') {
-      const invalidKey = Object.keys(payload).find((key) => !allowedForPublished.includes(key));
+      const allowed = event.type === 'merchandise' ? allowedForPublishedMerch : allowedForPublishedNormal;
+      const invalidKey = Object.keys(payload).find((key) => !allowed.includes(key));
       if (invalidKey) {
-        return res.status(403).json({ message: 'Only description, deadline, and limit can be edited when published' });
+        return res.status(403).json({
+          message: event.type === 'merchandise'
+            ? 'Only description, sale end date, and stock can be edited when published'
+            : 'Only description, deadline, and limit can be edited when published',
+        });
       }
 
       if (payload.registrationDeadline) {
@@ -31,6 +37,14 @@ export const checkEventEditPermission = async (req, res, next) => {
         const current = event.registrationDeadline ? new Date(event.registrationDeadline) : null;
         if (current && incoming < current) {
           return res.status(403).json({ message: 'Cannot shorten the registration deadline once published' });
+        }
+      }
+
+      if (payload.saleEndDate) {
+        const incoming = new Date(payload.saleEndDate);
+        const current = event.saleEndDate ? new Date(event.saleEndDate) : null;
+        if (current && incoming < current) {
+          return res.status(403).json({ message: 'Cannot shorten the sale end date once published' });
         }
       }
 
@@ -44,7 +58,8 @@ export const checkEventEditPermission = async (req, res, next) => {
       return next();
     }
 
-    if (status === 'ongoing' || status === 'completed' || status === 'closed') {
+    // sale-live, sale-ended, ongoing, completed, closed — no edits allowed
+    if (['sale-live', 'sale-ended', 'ongoing', 'completed', 'closed'].includes(status)) {
       return res.status(403).json({ message: 'Event cannot be edited in its current status' });
     }
 

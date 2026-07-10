@@ -62,12 +62,12 @@ const computeTrendingEvents = async () => {
 
   const ids = top.map((t) => t._id);
   if (!ids.length) return [];
-  const events = await Event.find({ _id: { $in: ids }, status: { $in: ['published', 'ongoing'] } }).populate('organizer');
+  const events = await Event.find({ _id: { $in: ids }, status: { $in: ['published', 'ongoing', 'sale-live'] } }).populate('organizer');
   const refreshed = await updateStatusesForMany(events);
   const map = new Map(refreshed.map((ev) => [String(ev._id), ev]));
   return top
     .map((t) => map.get(String(t._id)))
-    .filter((ev) => ev && ['published', 'ongoing'].includes(ev.status));
+    .filter((ev) => ev && ['published', 'ongoing', 'sale-live'].includes(ev.status));
 };
 
 export const createEvent = async (req, res) => {
@@ -96,9 +96,10 @@ export const createEvent = async (req, res) => {
       customFormSchema,
     });
     await updateEventStatus(event);
-    if (req.user.organizerProfile?.webhookUrl) {
+    const webhookUrl = req.user.organizerProfile?.discordWebhookUrl || req.user.organizerProfile?.webhookUrl;
+    if (webhookUrl) {
       sendDiscordWebhook(
-        req.user.organizerProfile.webhookUrl,
+        webhookUrl,
         `New event created: **${event.name}** (${event.type}) by ${req.user.name}`
       );
     }
@@ -364,14 +365,14 @@ export const getEventById = async (req, res) => {
   const saleEnded = event.saleEndDate && now > new Date(event.saleEndDate);
   let remainingSlots = null;
   if (event.type === 'normal' && event.registrationLimit) {
-    const count = await Registration.countDocuments({ event: event.id });
+    const count = await Registration.countDocuments({ event: event.id, status: { $nin: ['cancelled', 'rejected'] } });
     remainingSlots = Math.max(0, event.registrationLimit - count);
   }
   const variants = event.merchandiseVariants || [];
   const soldOut =
     event.type === 'merchandise' && variants.length > 0 && variants.every((v) => (v.stock || 0) <= 0);
   const canRegister =
-    ((event.type === 'normal' && event.status === 'published' && !deadlinePassed) ||
+    ((event.type === 'normal' && ['published', 'ongoing'].includes(event.status) && !deadlinePassed) ||
       (event.type === 'merchandise' && event.status === 'sale-live' && !saleEnded && !saleNotStarted)) &&
     !soldOut &&
     (remainingSlots === null || remainingSlots > 0);
@@ -406,20 +407,26 @@ export const organizerEvents = async (req, res) => {
 };
 
 export const listOrganizers = async (_req, res) => {
-  const organizers = await User.find({ role: 'organizer' }, 'name organizerProfile');
+  const organizers = await User.find({ role: 'organizer', isDeleted: { $ne: true }, isActive: true }, 'name organizerProfile');
   res.json({ organizers });
 };
 
 export const organizerDetail = async (req, res) => {
-  const organizer = await User.findById(req.params.id, 'name organizerProfile email role');
-  if (!organizer || organizer.role !== 'organizer') {
+  const organizer = await User.findById(req.params.id, 'name organizerProfile email role isDeleted isActive');
+  if (!organizer || organizer.role !== 'organizer' || organizer.isDeleted || !organizer.isActive) {
     return res.status(404).json({ message: 'Organizer not found' });
   }
-  const events = await Event.find({ organizer: organizer.id, status: { $in: ['published', 'ongoing', 'completed', 'closed'] } }).sort({ startDate: 1 });
+  const events = await Event.find({ organizer: organizer.id, status: { $in: ['published', 'ongoing', 'completed', 'closed', 'sale-live', 'sale-ended'] } }).sort({ startDate: 1 });
   const refreshed = await updateStatusesForMany(events);
   const now = new Date();
-  const upcoming = refreshed.filter((ev) => new Date(ev.startDate) >= now);
-  const past = refreshed.filter((ev) => new Date(ev.startDate) < now);
+  const upcoming = refreshed.filter((ev) => {
+    const dateRef = ev.startDate || ev.saleStartDate;
+    return dateRef && new Date(dateRef) >= now;
+  });
+  const past = refreshed.filter((ev) => {
+    const dateRef = ev.startDate || ev.saleStartDate;
+    return !dateRef || new Date(dateRef) < now;
+  });
   res.json({ organizer, upcoming, past });
 };
 

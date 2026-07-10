@@ -37,7 +37,7 @@ const ensureNotPastDeadline = (event) => {
 
 const ensureSlotsAvailable = async (event) => {
   if (!event.registrationLimit) return;
-  const count = await Registration.countDocuments({ event: event.id });
+  const count = await Registration.countDocuments({ event: event.id, status: { $nin: ['cancelled', 'rejected'] } });
   if (count >= event.registrationLimit) {
     const err = new Error('Registration limit reached');
     err.status = 400;
@@ -54,7 +54,7 @@ const buildTicketPayload = (registration, event, user) => ({
 });
 
 const ensureEventOpen = (event) => {
-  const isNormalOpen = event.type === 'normal' && event.status === 'published';
+  const isNormalOpen = event.type === 'normal' && ['published', 'ongoing'].includes(event.status);
   const isMerchOpen = event.type === 'merchandise' && event.status === 'sale-live';
   if (!isNormalOpen && !isMerchOpen) {
     const err = new Error('Registrations are closed for this event');
@@ -287,8 +287,16 @@ export const participantUpcoming = async (req, res) => {
   await refreshEventsForRegistrations(regs);
   const now = new Date();
   const filtered = regs.filter((reg) => {
-    const start = reg.event?.startDate ? new Date(reg.event.startDate) : null;
-    return start && start >= now && reg.status === 'registered';
+    if (reg.status !== 'registered') return false;
+    const ev = reg.event;
+    if (!ev) return false;
+    // For normal events use startDate, for merchandise use saleStartDate/saleEndDate
+    if (ev.type === 'merchandise') {
+      const saleEnd = ev.saleEndDate ? new Date(ev.saleEndDate) : null;
+      return !saleEnd || saleEnd >= now;
+    }
+    const start = ev.startDate ? new Date(ev.startDate) : null;
+    return start && start >= now;
   });
   res.json({ registrations: filtered });
 };
@@ -316,5 +324,13 @@ export const participantMerchandise = async (req, res) => {
   const regs = await fetchUserRegistrations(req.user.id);
   await refreshEventsForRegistrations(regs);
   const filtered = regs.filter((reg) => reg.type === 'merchandise');
+  res.json({ registrations: filtered });
+};
+
+export const participantNormal = async (req, res) => {
+  ensureParticipant(req.user);
+  const regs = await fetchUserRegistrations(req.user.id);
+  await refreshEventsForRegistrations(regs);
+  const filtered = regs.filter((reg) => reg.type === 'normal');
   res.json({ registrations: filtered });
 };

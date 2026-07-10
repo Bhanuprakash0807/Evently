@@ -6,6 +6,7 @@ import {
 	participantCancelled,
 	participantCompleted,
 	participantMerchandise,
+	participantNormal,
 	participantUpcoming,
 	purchaseMerchandise,
 	registerForEvent,
@@ -43,6 +44,7 @@ router.use(authMiddleware);
 
 router.get('/me/list', requireRole(['participant']), myRegistrations);
 router.get('/participant/events/upcoming', requireRole(['participant']), participantUpcoming);
+router.get('/participant/events/normal', requireRole(['participant']), participantNormal);
 router.get('/participant/events/completed', requireRole(['participant']), participantCompleted);
 router.get('/participant/events/cancelled', requireRole(['participant']), participantCancelled);
 router.get('/participant/events/merchandise', requireRole(['participant']), participantMerchandise);

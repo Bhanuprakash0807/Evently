@@ -1,6 +1,6 @@
 export const computeEventStatus = (event) => {
   if (!event) return null;
-  const immutable = ['draft', 'closed'];
+  const immutable = ['draft', 'closed', 'completed'];
   if (immutable.includes(event.status)) return event.status;
 
   const now = new Date();

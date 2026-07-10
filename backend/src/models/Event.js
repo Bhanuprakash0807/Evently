@@ -55,7 +55,7 @@ const eventSchema = new mongoose.Schema(
     type: { type: String, enum: ['normal', 'merchandise'], required: true },
     eligibility: {
       type: String,
-      enum: ['iiit', 'non-iiit', 'both', 'Open to all', 'open to all', 'open', 'all'],
+      enum: ['iiit', 'non-iiit', 'both'],
       default: 'both',
       set: normalizeEligibility,
     },
